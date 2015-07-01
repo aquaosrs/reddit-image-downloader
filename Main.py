@@ -1,16 +1,17 @@
 from urllib2 import urlopen, HTTPError, URLError, Request
-import os, json, urllib2
+import os, json, urllib2, sys
 from argparse import ArgumentParser
 from sys import argv
 from requests import get
 from re import sub
 from distutils.dir_util import mkpath
 
+import FolderOperations
+
 global CurrentSubReddit
 CurrentSubReddit = ""
 global CurrentDir
 CurrentDir = ""
-Path = "Reddit Rips"
 SupportedExts = ['.jpg', '.jpeg', '.png', '.gif']
 ImgurAfterString = '" target="_blank">View full resolution</a>'
 ImgurBeforeString = '<a href="//i.imgur.com/'
@@ -77,56 +78,21 @@ def PrintTotalStats():
 	else:
 		print 'Page Skipped: No Links Found'
 
-def CreateDir(Path=Path):
-	# Check if directory exists and create it if not.
-	Path = Path.rstrip()
-	if not os.path.exists(Path):
-		try:
-			mkpath(Path)
-		except:
-			print "Cannot Create DIR"
-
-def DeleteDir(Path):
-	if not os.path.exists(Path):
-		try:
-			os.rmdir(Path)
-		except:
-			pass
-
-def RemoveEmptyFolders(path):
-	path = os.path.relpath(path)
-	if not os.path.isdir(path):
-		return
-
-	# remove empty subfolders
-	files = os.listdir(path)
-	if len(files):
-		for f in files:
-			fullpath = os.path.join(path, f)
-			if os.path.isdir(fullpath):
-				RemoveEmptyFolders(fullpath)
-
-	# if folder empty, delete it
-	files = os.listdir(path)
-	if len(files) == 0:
-		print "Removing empty folder:", path
-		os.rmdir(path)
-
 def SetCurrentDir():
 	global CurrentDir
 	CurrentDir = os.path.join(Path, CurrentSubReddit)
-	CreateDir(CurrentDir)
+	FolderOperations.CreateDir(CurrentDir)
 	
 def SetCurrentSubReddit(SubReddit):
 	global CurrentSubReddit
 	CurrentSubReddit = SubReddit
-	CreateDir()
+	FolderOperations.CreateDir(Path)
 	SetCurrentDir()
 
 def download_imgur_album(url):
 	album_id = url[url.index(ImgurAlbumString) + len(ImgurAlbumString):]
 	AlbumDIR = os.path.join(CurrentDir, album_id)
-	CreateDir(AlbumDIR)
+	FolderOperations.CreateDir(AlbumDIR)
 	
 	count = 0
 	AfterIndex = 0
@@ -255,7 +221,7 @@ def download_file(url, filepath):
 
 			global PageStatsDownloaded
 			PageStatsDownloaded += 1
-                        
+			
 			filedata = response.read()
 			filehandle = open(filepath, 'wb')
 			filehandle.write(filedata)
@@ -297,7 +263,7 @@ def DownloadSubReddit(SubReddit, NumberOfPagesToGet = 1, Sort='hot'):
 	PrintSubReddit(SubReddit, Sort)
 	SetCurrentSubReddit(SubReddit)
 	path = os.path.join(Path, SubReddit)
-	CreateDir(path)
+	FolderOperations.CreateDir(path)
 	Count = 0
 	FailedCount = 0
 	After = ''
@@ -310,17 +276,22 @@ def DownloadSubReddit(SubReddit, NumberOfPagesToGet = 1, Sort='hot'):
 			if(FailedCount == 3):
 				Count += NumberOfPagesToGet
 				
-		RemoveEmptyFolders(CurrentDir)
+		FolderOperations.RemoveEmptyFolders(CurrentDir)
 		PrintStats()
 
-def ReadFromFile(TextFilePath = os.path.join(Path, 'Subreddits.txt'), Sort='hot'):
+def ReadFromFile(TextFilePath, Sort='hot'):
 	TextFile = open(TextFilePath, 'r')
 	SubRedditList = TextFile.readlines()
 	for SubReddit in SubRedditList:
 		SubReddit = SubReddit.rstrip()
 		DownloadSubReddit(SubReddit, 10, Sort)
 		PrintStats()
+	PrintTotalStats()
 
-ReadFromFile()
-
-PrintTotalStats()
+if __name__ == "__main__":
+	Path = sys.argv[1:]
+	
+if not Path:
+        Path = raw_input("Enter Path to DIR: ")
+        
+ReadFromFile(os.path.join(Path, 'Subreddits.txt'))

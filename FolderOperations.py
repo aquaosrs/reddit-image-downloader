@@ -1,4 +1,7 @@
-def CreateDir(Path=Path):
+import os
+from distutils.dir_util import mkpath
+
+def CreateDir(Path):
 	# Check if directory exists and create it if not.
 	Path = Path.rstrip()
 	if not os.path.exists(Path):
